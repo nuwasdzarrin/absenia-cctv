@@ -1,0 +1,22 @@
+# Absenia — sistem absensi CCTV via face recognition
+# Python 3.11 direkomendasikan
+
+# Computer vision & pengambilan frame RTSP
+opencv-python==4.10.0.84
+numpy==1.26.4
+
+# Face detection + recognition (InsightFace di atas onnxruntime)
+insightface==0.7.3
+onnxruntime==1.19.2
+# GPU (opsional, hapus komentar & hapus onnxruntime di atas bila punya GPU NVIDIA + CUDA):
+# onnxruntime-gpu==1.19.2
+
+# Kirim data ke Google Sheet (via Apps Script Web App)
+requests==2.32.3
+
+# Penjadwalan jendela pagi/sore
+APScheduler==3.10.4
+
+# Konfigurasi
+PyYAML==6.0.2
+python-dotenv==1.0.1

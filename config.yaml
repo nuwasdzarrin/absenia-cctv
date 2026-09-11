@@ -1,0 +1,64 @@
+# Absenia — konfigurasi PRODUKSI (dipakai default oleh semua perintah).
+# Kredensial (password RTSP, token Sheet) TIDAK di sini — lihat .env
+#
+# Untuk uji coba, JANGAN ubah file ini. Pakai file terpisah:
+#   python -m src.main run --config config.testing.yaml
+# sehingga setelan produksi di bawah tetap utuh.
+
+camera:
+  # Sumber video PRODUKSI = CCTV Tapo lewat RTSP.
+  # (Untuk uji coba pakai webcam, pakai config.testing.yaml, bukan ubah file ini.)
+  source: "rtsp"
+  # Index webcam (dipakai hanya bila source=webcam).
+  webcam_index: 0
+  # Bagian rahasia (user/pass/ip) diambil dari .env dan disusun jadi URL RTSP.
+  # Template URL: rtsp://<user>:<pass>@<ip>:<port>/<path>
+  rtsp_port: 554
+  # stream1 = HD (disarankan untuk face recognition), stream2 = SD (lebih ringan)
+  rtsp_path: "stream1"
+  # Ambil 1 frame tiap N detik saat jendela aktif (hemat CPU; 2-3 detik cukup)
+  sample_interval_sec: 3
+  # Timeout & reconnect bila stream putus
+  reconnect_delay_sec: 5
+
+recognition:
+  # Ambang cosine similarity (0..1). >= nilai ini dianggap "cocok".
+  # buffalo_l biasanya bagus di ~0.35-0.45. Tuning saat pilot.
+  match_threshold: 0.40
+  # Ukuran minimum wajah (lebar pixel) agar dianggap layak dikenali.
+  # Wajah lebih kecil dari ini diabaikan (terlalu jauh/blur).
+  min_face_width_px: 80
+  # Ukuran input detektor (lebih besar = lebih akurat untuk wajah kecil, lebih lambat)
+  det_size: [640, 640]
+  # Pakai GPU? (butuh onnxruntime-gpu). false = CPU.
+  use_gpu: false
+
+attendance:
+  # Karyawan dianggap "hadir" bila dikenali >= N kali dalam satu jendela.
+  min_detections: 3
+  # Jendela clock-in pagi (HH:MM 24 jam, waktu lokal PC)
+  clock_in_window:
+    start: "07:00"
+    end: "09:00"
+  # Jendela clock-out sore
+  clock_out_window:
+    start: "16:00"
+    end: "18:00"
+  # Hari kerja (0=Senin ... 6=Minggu). Default Senin-Jumat.
+  workdays: [0, 1, 2, 3, 4]
+
+storage:
+  db_path: "data/absenia.db"
+  faces_dir: "data/faces"
+  # CSV backup lokal selalu ditulis (jaring pengaman bila Sheet gagal)
+  csv_dir: "data/reports"
+
+sheets:
+  # Pakai Google Apps Script Web App (URL & token ada di .env).
+  enabled: true
+  # Nama tab/worksheet tujuan di Google Sheet.
+  worksheet_name: "Absensi"
+
+logging:
+  level: "INFO"
+  file: "data/absenia.log"

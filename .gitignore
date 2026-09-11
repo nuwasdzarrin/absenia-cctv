@@ -1,0 +1,22 @@
+# Rahasia
+.env
+
+# Data & artefak (biometrik & rekap — JANGAN di-commit)
+data/absenia.db
+data/absenia.log
+data/faces/*
+!data/faces/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Model InsightFace yang terunduh
+~/.insightface/
+models/

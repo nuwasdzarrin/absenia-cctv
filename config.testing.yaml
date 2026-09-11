@@ -1,0 +1,48 @@
+# Absenia — KONFIGURASI UJI COBA (testing).
+# Dipakai dengan:  python -m src.main run --config config.testing.yaml
+# Tujuannya supaya config.yaml (PRODUKSI) tidak perlu diutak-atik lagi.
+#
+# Bedanya dengan produksi:
+#  - source = webcam (bukan CCTV)
+#  - jendela "selalu aktif": pagi 00:00-12:00, sore 12:00-24:00 -> tidak perlu ubah jam
+#    (sebelum siang menguji clock-in, setelah siang menguji clock-out)
+#  - sampling cepat & min_detections rendah -> hasil cepat muncul
+#  - hari kerja = semua hari (termasuk Sabtu/Minggu) untuk kebebasan menguji
+#  - menulis ke tab "Absensi_Test" agar tab produksi "Absensi" tidak terkotori
+
+camera:
+  source: "webcam"
+  webcam_index: 0
+  rtsp_port: 554
+  rtsp_path: "stream1"
+  sample_interval_sec: 1
+  reconnect_delay_sec: 3
+
+recognition:
+  match_threshold: 0.40
+  min_face_width_px: 80
+  det_size: [640, 640]
+  use_gpu: false
+
+attendance:
+  min_detections: 2
+  clock_in_window:
+    start: "00:00"
+    end: "11:59"
+  clock_out_window:
+    start: "12:00"
+    end: "23:59"
+  workdays: [0, 1, 2, 3, 4, 5, 6]
+
+storage:
+  db_path: "data/absenia.db"
+  faces_dir: "data/faces"
+  csv_dir: "data/reports"
+
+sheets:
+  enabled: true
+  worksheet_name: "Absensi_Test"
+
+logging:
+  level: "INFO"
+  file: "data/absenia.log"
