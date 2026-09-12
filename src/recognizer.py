@@ -25,6 +25,7 @@ class DetectedFace:
 class FaceRecognizer:
     def __init__(
         self,
+        model_name: str = "buffalo_l",
         det_size: tuple[int, int] = (640, 640),
         use_gpu: bool = False,
         min_face_width_px: int = 80,
@@ -38,7 +39,8 @@ class FaceRecognizer:
             if use_gpu
             else ["CPUExecutionProvider"]
         )
-        self.app = FaceAnalysis(name="buffalo_l", providers=providers)
+        # buffalo_l = akurat (default). buffalo_s = ringan, cocok untuk SoC/ARM (mis. HG680P).
+        self.app = FaceAnalysis(name=model_name, providers=providers)
         ctx_id = 0 if use_gpu else -1
         self.app.prepare(ctx_id=ctx_id, det_size=det_size)
         self.min_face_width_px = min_face_width_px
@@ -83,3 +85,14 @@ class FaceRecognizer:
         if best_score >= threshold:
             return names[best_idx], best_score
         return None, best_score
+
+
+def build_recognizer(cfg) -> "FaceRecognizer":
+    """Buat FaceRecognizer dari config (dipakai semua modul agar setelan konsisten)."""
+    rc = cfg.recognition
+    return FaceRecognizer(
+        model_name=str(rc.get("model_name", "buffalo_l")),
+        det_size=tuple(rc.get("det_size", [640, 640])),
+        use_gpu=bool(rc.get("use_gpu", False)),
+        min_face_width_px=int(rc.get("min_face_width_px", 80)),
+    )

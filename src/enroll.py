@@ -26,7 +26,7 @@ import cv2
 
 from . import db
 from .config import load_config
-from .recognizer import FaceRecognizer
+from .recognizer import FaceRecognizer, build_recognizer
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -70,9 +70,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Enrollment wajah karyawan")
     ap.add_argument("--name", help="enroll ulang satu orang (nama subfolder)")
     ap.add_argument("--list", action="store_true", help="tampilkan karyawan terdaftar")
+    ap.add_argument("--config", default=None,
+                    help="path file config (mis. config.lowpower.yaml untuk model buffalo_s)")
     args = ap.parse_args()
 
-    cfg = load_config()
+    cfg = load_config(args.config)
     db.init_db(cfg.db_path)
 
     if args.list:
@@ -90,11 +92,7 @@ def main() -> int:
         return 1
 
     print("[i] Memuat model InsightFace...")
-    recognizer = FaceRecognizer(
-        det_size=tuple(cfg.recognition.get("det_size", [640, 640])),
-        use_gpu=bool(cfg.recognition.get("use_gpu", False)),
-        min_face_width_px=int(cfg.recognition.get("min_face_width_px", 80)),
-    )
+    recognizer = build_recognizer(cfg)
 
     if args.name:
         person_dirs = [faces_dir / args.name]

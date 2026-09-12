@@ -19,7 +19,7 @@ from . import db, sheets
 from .attendance import AttendanceTracker
 from .camera import BaseCamera, make_camera
 from .config import Config
-from .recognizer import FaceRecognizer
+from .recognizer import FaceRecognizer, build_recognizer
 
 log = logging.getLogger("absenia.scheduler")
 
@@ -33,11 +33,7 @@ class WindowRunner:
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
         self.tracker = AttendanceTracker(cfg)
-        self.recognizer = FaceRecognizer(
-            det_size=tuple(cfg.recognition.get("det_size", [640, 640])),
-            use_gpu=bool(cfg.recognition.get("use_gpu", False)),
-            min_face_width_px=int(cfg.recognition.get("min_face_width_px", 80)),
-        )
+        self.recognizer = build_recognizer(cfg)
         self.threshold = float(cfg.recognition.get("match_threshold", 0.40))
         self.sample_interval = int(cfg.camera.get("sample_interval_sec", 3))
         self.idle_sleep = 20  # detik tidur saat di luar jendela

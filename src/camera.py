@@ -11,6 +11,7 @@ Keduanya berbagi antarmuka sama:
 from __future__ import annotations
 
 import logging
+import sys
 import time
 from types import TracebackType
 
@@ -101,15 +102,27 @@ class WebcamCamera(BaseCamera):
         self.label = f"webcam #{index}"
 
     def _make_capture(self) -> cv2.VideoCapture:
-        # CAP_DSHOW mempercepat pembukaan webcam di Windows.
-        return cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
+        # Backend berbeda per OS:
+        #  - Windows: CAP_DSHOW (buka webcam lebih cepat & stabil)
+        #  - Linux/Armbian: default (V4L2 untuk webcam USB). macOS: default (AVFoundation).
+        if sys.platform == "win32":
+            return cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
+        return cv2.VideoCapture(self.index)
 
 
 def make_camera(cfg) -> BaseCamera:
-    """Factory: pilih sumber kamera dari config.yaml (camera.source)."""
+    """Factory: pilih sumber kamera dari config.yaml (camera.source):
+    - "webcam" : webcam lokal (USB/laptop)
+    - "rtsp"   : CCTV Tapo (URL disusun dari TAPO_* di .env)
+    - "url"    : URL stream apa pun dari STREAM_URL di .env (mis. HP jadi IP camera, kamera lain)
+    """
     cam_cfg = cfg.camera
     source = str(cam_cfg.get("source", "rtsp")).lower()
     delay = int(cam_cfg.get("reconnect_delay_sec", 5))
     if source == "webcam":
         return WebcamCamera(int(cam_cfg.get("webcam_index", 0)), reconnect_delay_sec=2)
+    if source == "url":
+        cam = RtspCamera(cfg.stream_url(), cfg.stream_url(masked=True), reconnect_delay_sec=delay)
+        cam.label = f"stream {cfg.stream_url(masked=True)}"
+        return cam
     return RtspCamera(cfg.rtsp_url(), cfg.rtsp_url(masked=True), reconnect_delay_sec=delay)

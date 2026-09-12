@@ -295,7 +295,68 @@ Buka `data/reports/poc_01.jpg`:
 - **Resolusi:** pakai `stream1` (HD). Turun ke `stream2` hanya bila CPU keberatan dan wajah
   tetap cukup besar.
 
-### 5.8 (Opsional) ONVIF
+### 5.8 Tes DETEKSI NAMA via CCTV (sebelum mengaktifkan absensi)
+
+Setelah Fase 0 lolos (wajah terdeteksi cukup besar), langkah berikutnya adalah memastikan
+CCTV benar-benar bisa **mengenali nama** orang yang sudah di-enroll — sebelum menyalakan
+logika absensi. Gunakan `scripts/test_recognize.py`:
+
+```powershell
+# CCTV (pakai config.yaml = rtsp). Butuh minimal satu orang terdaftar di depan kamera.
+.\.venv\Scripts\python.exe scripts\test_recognize.py --no-show --frames 10
+#   -> mencetak nama yang dikenali + menyimpan data/reports/recognize_snap.jpg
+
+.\.venv\Scripts\python.exe scripts\test_recognize.py            # mode live (jendela), q=keluar, s=snapshot
+.\.venv\Scripts\python.exe scripts\test_recognize.py --detect-every 12   # live lebih mulus
+.\.venv\Scripts\python.exe scripts\test_recognize.py --config config.testing.yaml   # uji pakai webcam
+```
+
+Arti warna kotak: **hijau** = dikenali (nama tampil) · **kuning** = wajah terdeteksi tapi
+belum di-enroll · **merah** = wajah terlalu kecil.
+
+> **Video live nge-lag?** Itu wajar: mode live menjalankan pengenalan wajah di CPU. Skrip
+> sudah memisahkan tampilan dari deteksi — video ditampilkan **tiap frame** (mulus) sementara
+> pengenalan berjalan **tiap `--detect-every` frame** (default 8). Perbesar angkanya (mis.
+> `--detect-every 15`) untuk lebih mulus; **nama tetap terdeteksi otomatis**, hanya label yang
+> di-refresh beberapa kali per detik. Ini tidak memengaruhi sistem absensi (yang hanya ambil
+> 1 frame tiap 3 detik).
+
+- Jika muncul nama yang benar → CCTV siap untuk absensi. Lanjut ke [bagian 8](#8-menjalankan--auto-start).
+- Jika **0 wajah / 0 nama** padahal ada orang → hampir selalu **masalah posisi kamera**
+  (top-down, wajah menunduk/menyudut). Perbaiki sesuai [5.7](#57-posisi--jaringan-kamera-agar-akurasi-tinggi):
+  arahkan kamera ke **pintu masuk setinggi wajah**. Eksperimen software yang bisa dicoba:
+  naikkan `recognition.det_size` (mis. `[1280, 1280]`) agar lebih peka ke wajah kecil —
+  ini memperlambat sedikit, dan tidak menyembuhkan sudut top-down.
+
+### 5.9 Pakai HP Android sebagai kamera (IP Webcam)
+
+Tidak punya CCTV/webcam? **HP Android bisa jadi kameranya** — kamera depan sudah cukup
+(menghadap orang). Caranya: HP jadi "IP camera" di WiFi, lalu Absenia (di PC/STB) connect ke
+URL stream-nya. **Pemrosesan tetap di komputer, bukan di HP.**
+
+> ⚠️ Menjalankan seluruh sistem DI DALAM HP (Termux) **tidak disarankan** — install
+> InsightFace/onnxruntime di Android rapuh & sangat menyusahkan. Pakai HP sebagai kamera saja.
+
+**Langkah:**
+
+1. Di HP, pasang app **"IP Webcam"** (Pavel Khlebovich) dari Play Store — atau app IP camera
+   sejenis yang menyediakan stream RTSP/MJPEG.
+2. Buka app → pilih kamera **depan** (front) → **Start server**. Catat URL yang muncul,
+   contohnya `http://192.168.18.50:8080`. URL stream-nya:
+   - MJPEG: `http://192.168.18.50:8080/video`
+   - (sebagian app menyediakan RTSP: `rtsp://192.168.18.50:8080/h264_ulaw.sdp`)
+3. Pastikan HP & komputer **satu WiFi/LAN**. Uji URL di **VLC** dulu (Media → Open Network
+   Stream) — kalau video muncul, lanjut.
+4. Di `.env`, isi: `STREAM_URL=http://192.168.18.50:8080/video`
+5. Di config (mis. `config.yaml`): set `camera.source: "url"`.
+6. Uji deteksi nama: `python -m ...` → `scripts/test_recognize.py --no-show --frames 10`.
+
+**Tips penempatan HP:** taruh/tempel HP di dekat pintu setinggi wajah, layar menghadap orang
+yang masuk, colokkan charger (biar tak mati), dan matikan auto-lock/sleep layar di HP.
+`camera.source: "url"` ini juga berlaku untuk **kamera merek lain** (bukan Tapo) yang punya
+RTSP/MJPEG.
+
+### 5.10 (Opsional) ONVIF
 
 Tapo juga mendukung ONVIF (biasanya port `2020`), tapi Absenia memakai RTSP yang lebih
 sederhana. Anda tidak perlu ONVIF untuk sistem ini.
@@ -388,6 +449,21 @@ sendiri** saat data dikirim berikutnya.
 `run` otomatis aktif hanya di jendela **07:00–09:00** & **16:00–18:00** (sesuai `config.yaml`),
 dan mengekspor rekap ke Google Sheet **saat tiap jendela berakhir**.
 
+### Perintah berbeda per sistem operasi
+
+Isi perintahnya sama; yang beda hanya **cara memanggil Python di virtualenv**:
+
+| OS | Prefix Python | Contoh |
+|---|---|---|
+| **Windows** | `.\.venv\Scripts\python.exe` | `.\.venv\Scripts\python.exe -m src.main run` |
+| **Linux** (x86/mini PC) | `.venv/bin/python3` | `.venv/bin/python3 -m src.main run` |
+| **Armbian / SoC** (HG680P) | `.venv/bin/python3` + config low-power | `.venv/bin/python3 -m src.main run --config config.lowpower.yaml` |
+
+Semua perintah lain (`status`, `export`, skrip `scripts/...`) mengikuti pola prefix yang sama.
+Di Linux/Armbian, alih-alih mengetik `--config` tiap kali, Anda bisa set sekali per sesi:
+`export ABSENIA_CONFIG=config.lowpower.yaml` — semua perintah lalu memakai config itu.
+Lihat [bagian 8b](#8b-menjalankan-di-linux--armbian-soc-seperti-hg680p) untuk setup lengkap.
+
 ### Auto-start saat PC menyala (Windows Task Scheduler)
 
 1. Buat `run_absenia.bat` di folder proyek:
@@ -401,16 +477,105 @@ dan mengekspor rekap ke Google Sheet **saat tiap jendela berakhir**.
    tab **Actions**: jalankan `run_absenia.bat`.
 3. Buka **Power Options**, pastikan PC **tidak sleep** pada jam kerja (07:00–18:00).
 
+### 8b. Menjalankan di Linux / Armbian (SoC seperti HG680P)
+
+Absenia berjalan di **Linux ARM64** (Armbian, Raspberry Pi OS, Ubuntu). Cocok untuk box
+hemat daya seperti **STB HG680P** (Amlogic S905X, quad-core, ~2 GB RAM) memakai **webcam USB**.
+
+**Penyesuaian untuk device lemah:** pakai `config.lowpower.yaml` (model ringan `buffalo_s`,
+`det_size` kecil, sampling 5 dtk, `stream2`). Jalankan **headless** (tanpa desktop) agar RAM
+cukup.
+
+#### 1) Install (sekali)
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv python3-dev build-essential cmake git \
+                    libgl1 libglib2.0-0 v4l-utils
+git clone git@github.com:nuwasdzarrin/absenia-cctv.git
+cd absenia-cctv
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt      # insightface dikompilasi di sini (butuh cmake/gcc)
+```
+
+> Cek webcam terdeteksi: `v4l2-ctl --list-devices` (biasanya `/dev/video0` → `webcam_index: 0`).
+
+#### 2) Isi kredensial & config
+
+```bash
+cp .env.example .env
+nano .env        # isi APPS_SCRIPT_URL / APPS_SCRIPT_TOKEN (kredensial Tapo tak perlu bila webcam)
+```
+
+#### 3) Enroll ulang (WAJIB, karena model beda)
+
+`config.lowpower.yaml` memakai `buffalo_s`; embedding-nya **tidak kompatibel** dengan
+`buffalo_l` dari PC. Jadi salin foto ke `data/faces/<nama>/` lalu enroll ulang **dengan config
+low-power**:
+
+```bash
+# taruh foto di data/faces/<nama>/ , atau rekam via webcam:
+.venv/bin/python3 scripts/capture_face.py --name budi --count 5
+# enroll memakai model buffalo_s:
+.venv/bin/python3 -m src.enroll --config config.lowpower.yaml
+```
+
+#### 4) Uji lalu jalankan
+
+```bash
+# uji deteksi nama via webcam (headless, cetak nama):
+.venv/bin/python3 scripts/test_recognize.py --config config.lowpower.yaml --no-show --frames 10
+# jalankan absensi:
+.venv/bin/python3 -m src.main run --config config.lowpower.yaml
+```
+
+> Tips: `export ABSENIA_CONFIG=config.lowpower.yaml` sekali di awal sesi, lalu semua perintah
+> tak perlu `--config` lagi.
+
+#### 5) Auto-start (systemd) — berjalan otomatis saat box menyala
+
+Buat `/etc/systemd/system/absenia.service` (sesuaikan `User` & path):
+
+```ini
+[Unit]
+Description=Absenia attendance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/absenia-cctv
+Environment=ABSENIA_CONFIG=config.lowpower.yaml
+ExecStart=/home/pi/absenia-cctv/.venv/bin/python3 -m src.main run
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now absenia
+sudo systemctl status absenia      # cek jalan
+journalctl -u absenia -f           # lihat log langsung
+```
+
+> **Realistis soal performa:** di HG680P (A53 ~2 GB), `buffalo_s` bisa makan ~2–4 dtk per
+> frame — masih cukup karena sampling tiap 5 dtk & jendela panjang. Bila terasa berat,
+> perbesar `sample_interval_sec` atau kecilkan `det_size` (mis. `[320, 320]`). Untuk hasil
+> paling mulus & anti-ribet, mini PC x86 (Intel N100) tetap pilihan teraman.
+
 ---
 
 ## 9. Konfigurasi lengkap (`config.yaml`)
 
-Ada **dua file config** agar setelan produksi tidak perlu diubah-ubah:
+Ada **tiga file config** siap pakai agar setelan tidak perlu diubah-ubah:
 
 | File | Untuk | Cara pakai |
 |---|---|---|
-| `config.yaml` | **Produksi** — CCTV (rtsp), jendela 07:00–09:00 & 16:00–18:00, tab **Absensi** | dipakai otomatis: `python -m src.main run` |
-| `config.testing.yaml` | **Uji coba** — webcam, jendela selalu aktif, sampling cepat, tab **Absensi_Test** | tambahkan flag: `... run --config config.testing.yaml` |
+| `config.yaml` | **Produksi** — CCTV (rtsp), jendela 07:00–09:00 & 16:00–18:00, model `buffalo_l`, tab **Absensi** | dipakai otomatis: `python -m src.main run` |
+| `config.testing.yaml` | **Uji coba** — webcam, jendela selalu aktif, sampling cepat, tab **Absensi_Test** | `... run --config config.testing.yaml` |
+| `config.lowpower.yaml` | **SoC/ARM** (HG680P/Armbian) — webcam, model ringan `buffalo_s`, `det_size` kecil, sampling 5 dtk | `... run --config config.lowpower.yaml` (lihat [8b](#8b-menjalankan-di-linux--armbian-soc-seperti-hg680p)) |
 
 Semua perintah `run` / `status` / `export` menerima `--config <file>`. Alternatif: set
 environment variable `ABSENIA_CONFIG`. Tanpa keduanya, `config.yaml` (produksi) yang dipakai.
@@ -419,12 +584,13 @@ Daftar kunci (berlaku untuk kedua file):
 
 | Kunci | Arti |
 |---|---|
-| `camera.source` | `"webcam"` (uji coba) atau `"rtsp"` (CCTV Tapo). |
+| `camera.source` | `"rtsp"` (CCTV Tapo), `"webcam"` (USB/laptop), atau `"url"` (stream apa pun dari `STREAM_URL` di `.env` — HP jadi IP camera / kamera merek lain). |
 | `camera.webcam_index` | index webcam bila `source: webcam` (biasanya `0`). |
 | `camera.rtsp_port` | port RTSP Tapo (default `554`). |
 | `camera.rtsp_path` | `"stream1"` (HD) atau `"stream2"` (SD). |
 | `camera.sample_interval_sec` | jarak antar-sampling frame saat jendela aktif (default `3`). |
 | `camera.reconnect_delay_sec` | jeda sebelum mencoba menyambung ulang stream yang putus. |
+| `recognition.model_name` | `"buffalo_l"` (akurat, default) atau `"buffalo_s"` (ringan, untuk SoC/ARM). Ganti model = **wajib enroll ulang**. |
 | `recognition.match_threshold` | ambang kecocokan wajah (0–1). Naikkan bila banyak salah-kenal; turunkan bila banyak yang tak terkenali. Mulai `0.40`. |
 | `recognition.min_face_width_px` | wajah lebih kecil dari ini (piksel) diabaikan. |
 | `recognition.det_size` | ukuran input detektor; lebih besar = lebih teliti untuk wajah kecil, lebih lambat. |
@@ -454,13 +620,15 @@ src/
 ├─ scheduler.py     # loop berbasis jendela waktu (bisa dibatasi durasi)
 └─ main.py          # entry point: run / status / export
 scripts/
-├─ test_webcam.py   # uji deteksi & pengenalan via webcam
-├─ test_rtsp.py     # FASE 0: uji koneksi CCTV Tapo + kelayakan wajah
-└─ capture_face.py  # rekam foto enrollment dari webcam
+├─ test_webcam.py    # uji deteksi & pengenalan via webcam
+├─ test_rtsp.py      # FASE 0: uji koneksi CCTV Tapo + kelayakan wajah
+├─ test_recognize.py # tes deteksi NAMA (CCTV/webcam) sebelum absensi
+└─ capture_face.py   # rekam foto enrollment dari webcam
 apps_script/
 └─ Code.gs          # dipasang di Google Sheet (Extensions > Apps Script)
-config.yaml           # config PRODUKSI (CCTV, jam kerja, tab Absensi)
+config.yaml           # config PRODUKSI (CCTV, jam kerja, buffalo_l, tab Absensi)
 config.testing.yaml   # config UJI COBA (webcam, jendela selalu aktif, tab Absensi_Test)
+config.lowpower.yaml  # config SoC/ARM (HG680P/Armbian: webcam, buffalo_s, ringan)
 .env · requirements.txt
 ```
 

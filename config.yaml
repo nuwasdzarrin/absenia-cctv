@@ -6,8 +6,9 @@
 # sehingga setelan produksi di bawah tetap utuh.
 
 camera:
-  # Sumber video PRODUKSI = CCTV Tapo lewat RTSP.
-  # (Untuk uji coba pakai webcam, pakai config.testing.yaml, bukan ubah file ini.)
+  # Sumber video: "rtsp" (CCTV Tapo), "webcam" (USB/laptop), atau "url" (stream apa pun
+  # dari STREAM_URL di .env — mis. HP Android jadi IP camera / kamera merek lain).
+  # PRODUKSI default = CCTV Tapo (rtsp). Untuk uji coba webcam, pakai config.testing.yaml.
   source: "rtsp"
   # Index webcam (dipakai hanya bila source=webcam).
   webcam_index: 0
@@ -22,6 +23,9 @@ camera:
   reconnect_delay_sec: 5
 
 recognition:
+  # Model InsightFace: "buffalo_l" (akurat, default) atau "buffalo_s" (ringan, untuk SoC/ARM).
+  # PENTING: kalau ganti model, WAJIB enroll ulang (embedding antar-model tidak kompatibel).
+  model_name: "buffalo_l"
   # Ambang cosine similarity (0..1). >= nilai ini dianggap "cocok".
   # buffalo_l biasanya bagus di ~0.35-0.45. Tuning saat pilot.
   match_threshold: 0.40

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.camera import WebcamCamera  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.recognizer import FaceRecognizer  # noqa: E402
+from src.recognizer import build_recognizer  # noqa: E402
 
 
 def main() -> int:
@@ -41,11 +41,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("[i] Memuat model InsightFace...")
-    recognizer = FaceRecognizer(
-        det_size=tuple(rec_cfg.get("det_size", [640, 640])),
-        use_gpu=bool(rec_cfg.get("use_gpu", False)),
-        min_face_width_px=min_w,
-    )
+    recognizer = build_recognizer(cfg)
 
     cam = WebcamCamera(index)
     if not cam.open():

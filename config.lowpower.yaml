@@ -1,0 +1,50 @@
+# Absenia — KONFIGURASI LOW-POWER untuk SoC/ARM (mis. STB HG680P + Armbian) pakai webcam.
+# Jalankan:  python3 -m src.main run --config config.lowpower.yaml
+#
+# Disetel agar ringan di device lemah (Amlogic S905X, quad A53, RAM ~2GB):
+#  - model "buffalo_s" (jauh lebih ringan dari buffalo_l)
+#  - det_size kecil (480x480) -> lebih cepat, cukup untuk webcam jarak dekat
+#  - sampling dijarangkan (5 dtk) -> beri napas CPU
+#  - sumber = webcam USB
+#
+# PENTING: karena model = buffalo_s, WAJIB enroll ulang di device ini
+#   (embedding buffalo_s != buffalo_l):  python3 -m src.enroll --config ... (via file config ini)
+#   -> pakai: ABSENIA_CONFIG=config.lowpower.yaml python3 -m src.enroll
+
+camera:
+  source: "webcam"
+  webcam_index: 0
+  rtsp_port: 554
+  rtsp_path: "stream2"      # bila nanti pakai RTSP, SD lebih ringan di-decode
+  sample_interval_sec: 5    # lebih jarang -> ringan untuk CPU lemah
+  reconnect_delay_sec: 3
+
+recognition:
+  model_name: "buffalo_s"   # model ringan untuk SoC/ARM
+  match_threshold: 0.40
+  min_face_width_px: 60     # sedikit lebih longgar (det_size kecil -> wajah lebih kecil)
+  det_size: [480, 480]      # lebih kecil = lebih cepat
+  use_gpu: false
+
+attendance:
+  min_detections: 3
+  clock_in_window:
+    start: "07:00"
+    end: "09:00"
+  clock_out_window:
+    start: "16:00"
+    end: "18:00"
+  workdays: [0, 1, 2, 3, 4]
+
+storage:
+  db_path: "data/absenia.db"
+  faces_dir: "data/faces"
+  csv_dir: "data/reports"
+
+sheets:
+  enabled: true
+  worksheet_name: "Absensi"
+
+logging:
+  level: "INFO"
+  file: "data/absenia.log"

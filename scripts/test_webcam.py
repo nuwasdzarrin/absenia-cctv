@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src import db  # noqa: E402
 from src.camera import WebcamCamera  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.recognizer import FaceRecognizer  # noqa: E402
+from src.recognizer import FaceRecognizer, build_recognizer  # noqa: E402
 
 
 def main() -> int:
@@ -48,11 +48,7 @@ def main() -> int:
     index = args.index if args.index is not None else int(cfg.camera.get("webcam_index", 0))
 
     print("[i] Memuat model InsightFace (unduhan pertama bisa beberapa menit)...")
-    recognizer = FaceRecognizer(
-        det_size=tuple(rec_cfg.get("det_size", [640, 640])),
-        use_gpu=bool(rec_cfg.get("use_gpu", False)),
-        min_face_width_px=min_w,
-    )
+    recognizer = build_recognizer(cfg)
 
     # muat galeri wajah bila sudah ada yang di-enroll (opsional)
     db.init_db(cfg.db_path)

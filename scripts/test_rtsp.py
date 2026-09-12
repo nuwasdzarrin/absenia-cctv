@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.camera import RtspCamera  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.recognizer import FaceRecognizer  # noqa: E402
+from src.recognizer import build_recognizer  # noqa: E402
 
 
 def draw_faces(frame, faces, min_w: int):
@@ -55,11 +55,7 @@ def main() -> int:
     print(f"[i] Model : InsightFace buffalo_l (GPU={rec_cfg.get('use_gpu', False)})")
     print("[i] Memuat model (unduhan pertama bisa beberapa menit)...")
 
-    recognizer = FaceRecognizer(
-        det_size=tuple(rec_cfg.get("det_size", [640, 640])),
-        use_gpu=bool(rec_cfg.get("use_gpu", False)),
-        min_face_width_px=min_w,
-    )
+    recognizer = build_recognizer(cfg)
 
     out_dir = cfg.csv_dir  # reuse folder reports untuk simpan gambar PoC
     out_dir.mkdir(parents=True, exist_ok=True)

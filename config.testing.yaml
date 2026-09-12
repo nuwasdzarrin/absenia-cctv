@@ -19,6 +19,7 @@ camera:
   reconnect_delay_sec: 3
 
 recognition:
+  model_name: "buffalo_l"
   match_threshold: 0.40
   min_face_width_px: 80
   det_size: [640, 640]
